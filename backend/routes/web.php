@@ -6,3 +6,4 @@ use App\Http\Controllers\CoordinateController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/coordinate', [CoordinateController::class, 'getCoordinates']);
+Route::post('/coordinate/paginated', [CoordinateController::class, 'getCoordinatesPaginated']);

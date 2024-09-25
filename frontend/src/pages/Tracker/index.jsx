@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSelector } from "react-redux";
-import { Button, Page } from "@shopify/polaris";
-import { useGetCoordinatesMutation } from "../../stores/CoordinateStore";
+import { Badge, Button, DataTable, LegacyCard, Page, TextField } from "@shopify/polaris";
+import { useGetCoordinatesMutation, useGetCoordinatesPaginatedMutation } from "../../stores/CoordinateStore";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function IconTable(props) {
   return (
@@ -17,34 +19,59 @@ function IconTable(props) {
   );
 }
 
+const notify = (message) => toast(message);
+
 export default function Tracker() {
   const userData = useSelector((state) => state.user);
   const [coordinates, setCoordinates] = useState([]);
   const [query, setQuery] = useState("");
-  const [limit, setLimit] = useState(10)
-  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10);
+  const [page, setPage] = useState(1);
+  const [totalEtries, setTotalEntries] = useState(0);
   const [filteredCoordinates, setFilteredCoordinates] = useState([]);
+  const [rows, setRows] = useState([]);
 
   useEffect(() => {
     handleFetchCoordinates();
   }, []);
+  
+  useEffect(() => {
+    handleFetchCoordinatesPaginated();
+  }, [limit, page, query]);
 
   const [getCoordinates, { isLoading }] = useGetCoordinatesMutation();
+  const [getCoordinatesPaginated, { isLoading: isLoadingPaginated }] = useGetCoordinatesPaginatedMutation();
 
   const handleFetchCoordinates = async () => {
-    console.log({"token": userData?.token?.data?.jwt})
     const response = await getCoordinates({ token: userData?.token?.data?.jwt });
-    console.log({response})
-    if (!response?.data?.coordinates?.data || !Array.isArray(response?.data?.coordinates?.data)) {
+    if (!response?.data && !response?.data?.coordinates && !Array.isArray(!response?.data?.coordinates) && isLoading) {
+      notify("No se pudieron obtener las coordenadas");
       return;
     }
+    setCoordinates(response?.data?.coordinates);
   }
+
+  const handleFetchCoordinatesPaginated = async () => {
+    const response = await getCoordinatesPaginated({ token: userData?.token?.data?.jwt, limit, page, query });
+    if (!response?.data && !response?.data?.coordinates && !Array.isArray(response?.data?.coordinates) && isLoadingPaginated) {
+      notify("No se pudieron obtener las coordenadas seleccionadas");
+      return;
+    }
+    const tableData = response?.data?.coordinates?.map(ele => ([ ele?.eco, ele?.lat, ele?.lng, ele?.state, ele?.country ])) ?? [];
+    setRows(tableData);
+    setFilteredCoordinates(response?.data?.coordinates);
+    setTotalEntries(response?.data?.total);
+  }
+
+  const handleClearButtonClick = useCallback(() => setQuery(''), []);
 
   return (
     <Page
       title="TRACKER"
       fullWidth
+      titleMetadata={<Badge tone="success">Activo</Badge>}
     >
+      <ToastContainer />
       <div className="grid grid-cols-2 grid-rows-2 gap-5">
         <div className="border rounded-md border-gray-300">
           <Page
@@ -52,7 +79,41 @@ export default function Tracker() {
             fullWidth
             primaryAction={<Button icon={<IconTable />} variant="primary">Excel</Button>}
           >
-
+            <LegacyCard>
+              <TextField
+                placeholder="Buscar"
+                autoComplete="off"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e);
+                }}
+                clearButton
+                onClearButtonClick={handleClearButtonClick}
+              />
+              <DataTable 
+                columnContentTypes={[
+                  'text',
+                  'text',
+                  'text',
+                  'text',
+                  'text',
+                ]}
+                headings={[
+                  'ECO',
+                  'LAT',
+                  'LNG',
+                  'STATE',
+                  'COUNTRY',
+                ]}
+                rows={rows}
+                pagination={{
+                  hasNext: rows?.length > 9,
+                  onNext: () => setPage((current) => current + 1),
+                  hasPrevious: page > 1,
+                  onPrevious: () => setPage((current) => current - 1),
+                }}
+              />
+            </LegacyCard>
           </Page>
         </div>
         <div >2</div>
