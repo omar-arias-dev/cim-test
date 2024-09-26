@@ -5,6 +5,7 @@ import {
 import Login from "./../pages/Login";
 import Tracker from "./../pages/Tracker";
 import Map from "../pages/Map";
+import NotFound from "../pages/NotFound/Index";
 
 export const router = createBrowserRouter([
   {
@@ -16,7 +17,11 @@ export const router = createBrowserRouter([
     element: <Tracker />,
   },
   {
-    path: "/tracker/map",
+    path: "/map/:limit/:page/:query",
     element: <Map />,
+  },
+  {
+    path: "*",
+    element: <NotFound />,
   }
 ]);

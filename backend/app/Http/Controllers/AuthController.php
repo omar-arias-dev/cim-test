@@ -68,4 +68,36 @@ class AuthController extends Controller
         }
         return response()->json(['message' => 'User not found'], 404);
     }
+
+    public function changePassword(Request $request)
+    {
+        Log::info($request);
+
+        $request->validate([
+            'email' => 'required|email',
+            'current_password' => 'required',
+            'new_password' => 'required|confirmed',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json(['message' => 'Current password is incorrect'], 401);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->new_password)
+        ]);
+
+        Log::info("User {$user->email} has changed their password.");
+
+        return response()->json([
+            'message' => 'Password changed successfully',
+        ], 200);
+    }
+
 }

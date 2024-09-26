@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from "react-redux";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import { useGetCoordinatesMutation } from "../../stores/CoordinateStore";
+import { useGetCoordinatesMutation, useGetCoordinatesPaginatedMutation } from "../../stores/CoordinateStore";
 import 'leaflet/dist/leaflet.css';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -10,12 +11,20 @@ const notify = (message) => toast(message);
 
 export default function Map() {
   const userData = useSelector((state) => state.user);
+  const navigate = useNavigate();
+  const { limit, page, query } = useParams();
   const [coordinates, setCoordinates] = useState([]);
 
   const [getCoordinates, { isLoading }] = useGetCoordinatesMutation();
+  const [getCoordinatesPaginated, { isLoading: isLoadingPaginated }] = useGetCoordinatesPaginatedMutation();
 
   useEffect(() => {
-    handleFetchCoordinates();
+    if (!userData || !userData?.isLogged) {
+      navigate("/");
+      return;
+    }
+    //handleFetchCoordinates();
+    handleFetchCoordinatesPaginated();
   }, []);
 
   const handleFetchCoordinates = async () => {
@@ -30,6 +39,20 @@ export default function Map() {
     }));
     setCoordinates(markers);
   }
+
+  const handleFetchCoordinatesPaginated = async () => {
+    const response = await getCoordinatesPaginated({ token: userData?.token?.data?.jwt, limit, page, query: query === "empty" ? "" : query });
+    if (!response?.data && !response?.data?.coordinates && !Array.isArray(response?.data?.coordinates) && isLoadingPaginated) {
+      notify("No se pudieron obtener las coordenadas seleccionadas");
+      return;
+    }
+    const markers = response?.data?.coordinates?.map(co => ({
+      geoCode: [parseFloat(co?.lat), parseFloat(co?.lng)],
+      popUp: `${co?.country}, ${co?.state} = ${co?.eco} - ${co?.lat} - ${co?.lng}`,
+    }));
+    setCoordinates(markers);
+  }
+  console.log({coordinates})
 
   return (
     <>
