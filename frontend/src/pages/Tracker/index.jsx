@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSelector } from "react-redux";
-import { Badge, Button, DataTable, LegacyCard, Page, TextField } from "@shopify/polaris";
+import { useNavigate } from "react-router-dom";
+import { Badge, Button, DataTable, LegacyCard, Page, TextField, FooterHelp, Link } from "@shopify/polaris";
 import { useGetCoordinatesMutation, useGetCoordinatesPaginatedMutation } from "../../stores/CoordinateStore";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import BubbleChart from "./components/BubbleChart";
 
 function IconTable(props) {
   return (
@@ -22,6 +24,7 @@ function IconTable(props) {
 const notify = (message) => toast(message);
 
 export default function Tracker() {
+  const navigate = useNavigate();
   const userData = useSelector((state) => state.user);
   const [coordinates, setCoordinates] = useState([]);
   const [query, setQuery] = useState("");
@@ -30,11 +33,15 @@ export default function Tracker() {
   const [totalEtries, setTotalEntries] = useState(0);
   const [filteredCoordinates, setFilteredCoordinates] = useState([]);
   const [rows, setRows] = useState([]);
+  const [charts, setCharts] = useState({
+    byStateDecrease: [],
+    byCityIncrease: [],
+  });
 
   useEffect(() => {
     handleFetchCoordinates();
   }, []);
-  
+
   useEffect(() => {
     handleFetchCoordinatesPaginated();
   }, [limit, page, query]);
@@ -49,6 +56,23 @@ export default function Tracker() {
       return;
     }
     setCoordinates(response?.data?.coordinates);
+    const stateDecrease = response?.data?.coordinates?.map((co, index) => ({ ...co, x: parseFloat(co?.lat), y: parseFloat(co?.lng), r: 5 }));
+    stateDecrease.sort((a, b) => {
+      if (a?.state < b?.state) return -1;
+      if (a?.state > b?.state) return 1;
+      return 0;
+    });
+    const cityIncrease = response?.data?.coordinates?.map((co, index) => ({ ...co, x: parseFloat(co?.lat), y: parseFloat(co?.lng), r: 5 }));
+    cityIncrease.sort((a, b) => {
+      if (a?.country > b?.country) return -1;
+      if (a?.country < b?.country) return 1;
+      return 0;
+    });
+    setCharts({
+      ...charts,
+      byStateDecrease: stateDecrease,
+      byCityIncrease: cityIncrease,
+    });
   }
 
   const handleFetchCoordinatesPaginated = async () => {
@@ -57,10 +81,33 @@ export default function Tracker() {
       notify("No se pudieron obtener las coordenadas seleccionadas");
       return;
     }
-    const tableData = response?.data?.coordinates?.map(ele => ([ ele?.eco, ele?.lat, ele?.lng, ele?.state, ele?.country ])) ?? [];
+    const tableData = response?.data?.coordinates?.map(ele => ([ele?.eco, ele?.lat, ele?.lng, ele?.state, ele?.country])) ?? [];
     setRows(tableData);
     setFilteredCoordinates(response?.data?.coordinates);
     setTotalEntries(response?.data?.total);
+  }
+
+  const handleDownloadCoordinates = async () => {
+    const myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+    const raw = JSON.stringify({ token: userData?.token?.data?.jwt, limit, page, query });
+    const requestOptions = {
+      method: "POST",
+      headers: myHeaders,
+      body: raw,
+      redirect: "follow"
+    };
+    fetch("http://127.0.0.1:8000/coordinate/paginated/download", requestOptions)
+      .then((response) => response.blob())
+      .then((blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${Date.now()}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+      })
+      .catch((error) => console.error(error));
   }
 
   const handleClearButtonClick = useCallback(() => setQuery(''), []);
@@ -77,7 +124,16 @@ export default function Tracker() {
           <Page
             title="Coordenadas"
             fullWidth
-            primaryAction={<Button icon={<IconTable />} variant="primary">Excel</Button>}
+            primaryAction={
+              <Button
+                icon={<IconTable />}
+                variant="primary"
+                onClick={handleDownloadCoordinates}
+                disabled={rows?.length === 0 || isLoadingPaginated}
+              >
+                Excel
+              </Button>
+            }
           >
             <LegacyCard>
               <TextField
@@ -90,7 +146,7 @@ export default function Tracker() {
                 clearButton
                 onClearButtonClick={handleClearButtonClick}
               />
-              <DataTable 
+              <DataTable
                 columnContentTypes={[
                   'text',
                   'text',
@@ -116,9 +172,30 @@ export default function Tracker() {
             </LegacyCard>
           </Page>
         </div>
-        <div >2</div>
-        <div >3</div>
-        <div >4</div>
+        <div className="border rounded-md border-gray-300">
+          <Page
+            title="Mapa"
+            fullWidth
+          >
+            <LegacyCard sectioned>
+              <Button onClick={() => navigate("/tracker/map")}>Ver mapa</Button>
+              <FooterHelp>
+                La librería que utilicé para el mapa, <b>Leaflet</b>, tenía un error de renderizado en contenedores pequeños (necesitaba un <b>vh de 100</b>), por ende lo moví a otra página para que la vista estuviera bien.{' '}
+                <Link url="https://github.com/PaulLeCam/react-leaflet/issues/1052" target="_blank">
+                  Lo solucioné así.
+                </Link>
+              </FooterHelp>
+            </LegacyCard>
+          </Page>
+        </div>
+        <div className="border rounded-md border-gray-300">
+          <Page
+            title=""
+          >
+
+          </Page>
+        </div>
+        <div>4</div>
       </div>
     </Page>
   );

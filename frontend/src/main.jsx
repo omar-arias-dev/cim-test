@@ -13,11 +13,9 @@ import './index.css';
 import '@shopify/polaris/build/esm/styles.css';
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <AppProvider i18n={enTranslations}>
-      <Provider store={store}>
-        <RouterProvider router={router} />
-      </Provider>
-    </AppProvider>
-  </StrictMode>,
+  <AppProvider i18n={enTranslations}>
+    <Provider store={store}>
+      <RouterProvider router={router} />
+    </Provider>
+  </AppProvider>,
 )

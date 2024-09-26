@@ -4,7 +4,7 @@ import {
 
 import Login from "./../pages/Login";
 import Tracker from "./../pages/Tracker";
-
+import Map from "../pages/Map";
 
 export const router = createBrowserRouter([
   {
@@ -15,4 +15,8 @@ export const router = createBrowserRouter([
     path: "/tracker",
     element: <Tracker />,
   },
+  {
+    path: "/tracker/map",
+    element: <Map />,
+  }
 ]);
