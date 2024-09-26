@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\LoginLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -30,6 +31,10 @@ class AuthController extends Controller
                 'password' => 'exam1csm',
             ]);
             $token = $tokenRequest->json();
+            LoginLog::create([
+                'user_id' => $user->id,
+                'ip_address' => $request->ip(),
+            ]);
             return response()->json([
                 'message' => 'Login successful',
                 'data' => [

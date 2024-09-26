@@ -64,8 +64,8 @@ export default function Tracker() {
     });
     const cityIncrease = response?.data?.coordinates?.map((co, index) => ({ ...co, x: parseFloat(co?.lat), y: parseFloat(co?.lng), r: 5 }));
     cityIncrease.sort((a, b) => {
-      if (a?.country > b?.country) return -1;
-      if (a?.country < b?.country) return 1;
+      if (a?.eco > b?.eco) return -1;
+      if (a?.eco < b?.eco) return 1;
       return 0;
     });
     setCharts({
@@ -116,10 +116,11 @@ export default function Tracker() {
     <Page
       title="TRACKER"
       fullWidth
-      titleMetadata={<Badge tone="success">Activo</Badge>}
+      titleMetadata={<Badge tone={userData?.user?.is_logged ? "success" : "critical"}>{userData?.user?.is_logged ? "Activo" : "Inactivo"}</Badge>}
+      subtitle={<><b>Usuario:</b>{" "}{userData?.user?.name}</>}
     >
       <ToastContainer />
-      <div className="grid grid-cols-2 grid-rows-2 gap-5">
+      <div className="grid grid-cols-2 grid-rows-2 gap-5 pb-5">
         <div className="border rounded-md border-gray-300">
           <Page
             title="Coordenadas"
@@ -190,12 +191,22 @@ export default function Tracker() {
         </div>
         <div className="border rounded-md border-gray-300">
           <Page
-            title=""
+            title="Gráfico por estado"
+            subtitle="Ordenados por nombre de menor a mayor, y por latitud y logitud."
+            fullWidth
           >
-
+            <BubbleChart chart={charts?.byStateDecrease} label="Por Estado" sort="state" />
           </Page>
         </div>
-        <div>4</div>
+        <div className="border rounded-md border-gray-300">
+          <Page
+            title="Gráfico por ciudad"
+            subtitle="Ordenados por nombre de mayor a menor, y por latitud y logitud."
+            fullWidth
+          >
+            <BubbleChart chart={charts?.byCityIncrease} label="Por Ciudad" sort="country" />
+          </Page>
+        </div>
       </div>
     </Page>
   );
