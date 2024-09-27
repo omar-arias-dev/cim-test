@@ -58,6 +58,7 @@ const notify = (message) => toast(message);
 
 export default function Tracker() {
   const navigate = useNavigate();
+  const userStorage = localStorage?.getItem("userData") ?? null;
   const userData = useSelector((state) => state.user);
   const USER_ROLE = userData?.user?.role ?? "AGENT";
   const EXP_TOKEN = (userData?.expToken * 1000);
@@ -82,7 +83,11 @@ export default function Tracker() {
     const x = dayjs(EXP_DATE).diff(dayjs());
     const y = dayjs(EXP_DATE).add(10, "minute");
     const z = dayjs(y).diff(dayjs());
-    if (!x || isNaN(x) || x < 0) return;
+    if (!x || isNaN(x) || x < 0) {
+      localStorage.removeItem('userData');
+      navigate("/");
+      return;
+    };
     const timerx = setTimeout(() => {
       notify("El token ha expirado. Se cerrará sesión en 10 minutos");
       setIsExpired(true);

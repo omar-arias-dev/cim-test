@@ -138,6 +138,7 @@ class AuthController extends Controller
         $user->update([
             'email' => $request->email,
             'name' => $request->name,
+            'role' => $request->role ?? 'AGENT',
         ]);
 
         return response()->json([

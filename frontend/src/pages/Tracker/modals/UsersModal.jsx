@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LegacyCard, Modal, ResourceList, ResourceItem, Avatar, Text, Card, Button, FormLayout, TextField, Select } from "@shopify/polaris";
+import { LegacyCard, Modal, Avatar, Card, Button, FormLayout, TextField, Select, Badge } from "@shopify/polaris";
 import { useLazyAllUsersQuery, useDeleteUserMutation, useUpdateUserMutation, useCreateUserMutation } from "../../../stores/AuthStore";
 
 const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
@@ -53,17 +53,17 @@ function IconEdit(props) {
 }
 
 export default function UsersModal({ open, onClose, loggedUser }) {
-
+  console.log({loggedUser})
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState({
     id: null,
     name: "",
     email: "",
+    role: "",
   });
   const [isCreate, setIsCreate] = useState(false);
   const [createData, setCreateData] = useState({
     password: "",
-    role: "",
   });
 
   const [getAllUsers] = useLazyAllUsersQuery();
@@ -113,10 +113,10 @@ export default function UsersModal({ open, onClose, loggedUser }) {
         id: null,
         name: "",
         email: "",
+        role: "",
       });
       setCreateData({
         password: "",
-        role: "",
       });
       setIsCreate(false);
       await handleFetchUsers();
@@ -129,10 +129,10 @@ export default function UsersModal({ open, onClose, loggedUser }) {
       id: null,
       name: "",
       email: "",
+      role: "",
     });
     setCreateData({
       password: "",
-      role: "",
     });
     setIsCreate(false);
     onClose();
@@ -177,6 +177,7 @@ export default function UsersModal({ open, onClose, loggedUser }) {
                         id: null,
                         name: "",
                         email: "",
+                        role: "",
                       });
                       return;
                     }
@@ -187,7 +188,6 @@ export default function UsersModal({ open, onClose, loggedUser }) {
                     });
                     setCreateData({
                       password: "",
-                      role: "",
                     });
                     setIsCreate(false);
                   }}>
@@ -210,16 +210,16 @@ export default function UsersModal({ open, onClose, loggedUser }) {
                   }}
                   error={!selectedUser?.email ? "El campo es olbigatorio" : !emailRegex.test(selectedUser.email) ? "Email no válido" : ""}
                 />
+                <Select
+                  label="Rol"
+                  options={selectableOptions}
+                  value={selectedUser?.role}
+                  onChange={(v) => setSelectedUser({ ...selectedUser, role: v })}
+                  error={!selectedUser?.role ? "El campo es obligatorio" : ""}
+                />
                 {
                   isCreate && (
                     <FormLayout>
-                      <Select
-                        label="Rol"
-                        options={selectableOptions}
-                        value={createData.role}
-                        onChange={(v) => setCreateData({ ...createData, role: v })}
-                        error={!createData.role ? "El campo es obligatorio" : ""}
-                        />
                       <TextField
                         label="Contraseña"
                         type="password"
@@ -234,8 +234,8 @@ export default function UsersModal({ open, onClose, loggedUser }) {
                   <Button
                     variant="primary"
                     disabled={
-                      (!isCreate && (!selectedUser?.id || !selectedUser?.email || !selectedUser?.name || !emailRegex.test(selectedUser.email))) ||
-                      (isCreate && (!selectedUser?.email || !selectedUser?.name || !emailRegex.test(selectedUser.email) || !createData.password || !createData.role))
+                      (!isCreate && (!selectedUser?.id || !selectedUser?.email || !selectedUser?.name || !selectedUser?.role || !emailRegex.test(selectedUser.email))) ||
+                      (isCreate && (!selectedUser?.email || !selectedUser?.name || !emailRegex.test(selectedUser.email) || !createData.password || !selectedUser.role))
                     }
                     onClick={() => isCreate? handleCreateUser() : handleUpdateUser()}
                   >
@@ -248,6 +248,9 @@ export default function UsersModal({ open, onClose, loggedUser }) {
                 <div className="py-2 my-1 flex justify-between">
                   <div className="flex flex-col justify-center items-center">
                     <Avatar size="md" />
+                    <div className="my-2">
+                      <Badge progress="complete">{user?.role === "ADMIN" ? "Admin" : user?.role === "AGENT" ? "Agent" : ""}</Badge>
+                    </div>
                     <div className="flex flex-col items-center">
                       <b>
                         {user?.name}
@@ -265,11 +268,13 @@ export default function UsersModal({ open, onClose, loggedUser }) {
                       <Button
                         variant="primary"
                         onClick={() => {
+                          console.log(user)
                           setSelectedUser({
                             ...selectedUser,
                             id: user?.id,
                             email: user?.email,
                             name: user?.name,
+                            role: user?.role,
                           });
                         }}
                         icon={<IconEdit />}
