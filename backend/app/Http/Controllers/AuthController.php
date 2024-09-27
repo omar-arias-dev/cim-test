@@ -71,33 +71,98 @@ class AuthController extends Controller
 
     public function changePassword(Request $request)
     {
-        Log::info($request);
-
         $request->validate([
             'email' => 'required|email',
             'current_password' => 'required',
-            'new_password' => 'required|confirmed',
+            'new_password' => 'required',
         ]);
 
         $user = User::where('email', $request->email)->first();
 
         if (!$user) {
-            return response()->json(['message' => 'User not found'], 404);
+            return response()->json(['message' => 'User not found', 'code' => 404], 404);
         }
 
         if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json(['message' => 'Current password is incorrect'], 401);
+            return response()->json(['message' => 'Current password is incorrect', 'code' => 401], 401);
         }
 
         $user->update([
             'password' => Hash::make($request->new_password)
         ]);
 
-        Log::info("User {$user->email} has changed their password.");
-
         return response()->json([
             'message' => 'Password changed successfully',
+            'code' => 200,
         ], 200);
     }
+
+    public function getAllUsers() {
+        $users = User::all();
+        if (!$users) {
+            return response()->json(['message' => 'Users not found', 'code' => 404], 404);
+        }
+        return response()->json([
+            'users' => $users,
+            'code' => 200,
+        ], 200);
+    }
+
+    public function deleteUser(Request $request)
+    {
+        $request->validate([
+            'id' => 'required',
+        ]);
+
+        $user = User::find($request->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found', 'code' => 404], 404);
+        }
+
+        $user->delete();
+
+        return response()->json([
+            'message' => 'User deleted successfully',
+            'code' => 200,
+        ], 200);
+    }
+
+    public function updateUser(Request $request) {
+        $user = User::find($request->id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found', 'code' => 404], 404);
+        }
+
+        $user->update([
+            'email' => $request->email,
+            'name' => $request->name,
+        ]);
+
+        return response()->json([
+            'message' => 'User updated successfully',
+            'code' => 200,
+            'user' => $user,
+        ], 200);
+    }
+
+
+public function createUser(Request $request) {
+    $user = User::create([
+        'email' => $request->email,
+        'name' => $request->name,
+        'password' => Hash::make($request->password),
+        'role' => $request->role ?? 'AGENT',
+        'is_logged' => false,
+        'token' => null,
+    ]);
+
+    return response()->json([
+        'message' => 'User created successfully',
+        'code' => 201,
+        'user' => $user,
+    ], 201);
+}
 
 }

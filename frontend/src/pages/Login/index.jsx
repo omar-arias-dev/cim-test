@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from 'react-redux';
 import { useNavigate } from "react-router-dom";
 import { login as setLoginData } from './../../slices/UserSlice';
@@ -20,6 +20,14 @@ export default function Login() {
 
   const [login, { isLoading }] = useLazyLoginQuery();
 
+  useEffect(() => {
+    const userStorage = localStorage?.getItem("userData") ?? null;
+    const userObject = JSON?.parse(userStorage) ?? null;
+    if (!userStorage || !userObject) return;
+    dispatch(setLoginData(userObject));
+    navigate("/tracker");
+  }, []);
+
   const handleLoginClick = async () => {
     if (!form.email || !form.password) {
       notify("Campos aún sin llenar");
@@ -35,7 +43,9 @@ export default function Login() {
       return;
     };
     if (response?.data?.data?.token?.data?.jwt && response?.data?.data?.user) {
-      dispatch(setLoginData({ token: response?.data?.data?.token, user: response?.data?.data?.user }));
+      const userObject = { token: response?.data?.data?.token, user: response?.data?.data?.user, isLogged: true };
+      dispatch(setLoginData(userObject));
+      localStorage.setItem("userData", JSON.stringify(userObject));
       navigate("/tracker");
       return;
     } else {

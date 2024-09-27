@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate, redirect } from "react-router-dom";
-import { Badge, Button, DataTable, LegacyCard, Page, TextField, FooterHelp, Link } from "@shopify/polaris";
+import { useNavigate } from "react-router-dom";
+import { Badge, Button, DataTable, LegacyCard, Page, TextField, FooterHelp, Link, InlineError } from "@shopify/polaris";
 import { useGetCoordinatesMutation, useGetCoordinatesPaginatedMutation } from "../../stores/CoordinateStore";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import BubbleChart from "./components/BubbleChart";
 import ChangePasswordModal from "./modals/ChangePasswordModal";
+import dayjs from "dayjs";
+import UsersModal from "./modals/UsersModal";
 
 function IconTable(props) {
   return (
@@ -37,11 +39,29 @@ function IconPdf(props) {
   );
 }
 
+function IconUsers(props) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      height="1em"
+      width="1em"
+      {...props}
+    >
+      <path d="M12.3 12.22A4.92 4.92 0 0014 8.5a5 5 0 00-10 0 4.92 4.92 0 001.7 3.72A8 8 0 001 19.5a1 1 0 002 0 6 6 0 0112 0 1 1 0 002 0 8 8 0 00-4.7-7.28zM9 11.5a3 3 0 113-3 3 3 0 01-3 3zm9.74.32A5 5 0 0015 3.5a1 1 0 000 2 3 3 0 013 3 3 3 0 01-1.5 2.59 1 1 0 00-.5.84 1 1 0 00.45.86l.39.26.13.07a7 7 0 014 6.38 1 1 0 002 0 9 9 0 00-4.23-7.68z" />
+    </svg>
+  );
+}
+
 const notify = (message) => toast(message);
 
 export default function Tracker() {
   const navigate = useNavigate();
   const userData = useSelector((state) => state.user);
+  const USER_ROLE = userData?.user?.role ?? "AGENT";
+  const EXP_TOKEN = (userData?.expToken * 1000);
+  const EXP_DATE = EXP_TOKEN ? new Date(EXP_TOKEN) : null;
+  const IS_ADMIN = () => USER_ROLE === "ADMIN";
   const [coordinates, setCoordinates] = useState([]);
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(10);
@@ -54,6 +74,28 @@ export default function Tracker() {
     byCityIncrease: [],
   });
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
+  const [showUsersModal, setShowUsersModal] = useState(false);
+
+  useEffect(() => {
+    const x = dayjs(EXP_DATE).diff(dayjs());
+    const y = dayjs(EXP_DATE).add(10, "minute");
+    const z = dayjs(y).diff(dayjs());
+    if (!x || isNaN(x) || x < 0) return;
+    const timerx = setTimeout(() => {
+      notify("El token ha expirado. Se cerrará sesión en 10 minutos");
+      setIsExpired(true);
+    }, x);
+    const timerz = setTimeout(() => {
+      localStorage.removeItem('userData');
+      navigate("/");
+    }, z);
+  
+    return () => {
+      clearTimeout(timerx);
+      clearTimeout(timerz);
+    }; 
+  }, []);
 
   useEffect(() => {
     if (!userData || !userData?.isLogged) {
@@ -71,24 +113,29 @@ export default function Tracker() {
   const [getCoordinatesPaginated, { isLoading: isLoadingPaginated }] = useGetCoordinatesPaginatedMutation();
 
   const handleFetchCoordinates = async () => {
+    if (isExpired) return;
     const response = await getCoordinates({ token: userData?.token?.data?.jwt });
     if (!response?.data && !response?.data?.coordinates && !Array.isArray(!response?.data?.coordinates) && isLoading) {
       notify("No se pudieron obtener las coordenadas");
       return;
     }
     setCoordinates(response?.data?.coordinates);
-    const stateDecrease = response?.data?.coordinates?.map((co, index) => ({ ...co, x: parseFloat(co?.lat), y: parseFloat(co?.lng), r: 5 }));
-    stateDecrease.sort((a, b) => {
-      if (a?.state < b?.state) return -1;
-      if (a?.state > b?.state) return 1;
-      return 0;
-    });
-    const cityIncrease = response?.data?.coordinates?.map((co, index) => ({ ...co, x: parseFloat(co?.lat), y: parseFloat(co?.lng), r: 5 }));
-    cityIncrease.sort((a, b) => {
-      if (a?.eco > b?.eco) return -1;
-      if (a?.eco < b?.eco) return 1;
-      return 0;
-    });
+    const stateDecrease = response?.data?.coordinates?.map((co, index) => ({ ...co, x: parseFloat(co?.lat), y: parseFloat(co?.lng), r: 5 })) ?? [];
+    if (stateDecrease?.length > 0) {
+      stateDecrease.sort((a, b) => {
+        if (a?.state < b?.state) return -1;
+        if (a?.state > b?.state) return 1;
+        return 0;
+      });
+    }
+    const cityIncrease = response?.data?.coordinates?.map((co, index) => ({ ...co, x: parseFloat(co?.lat), y: parseFloat(co?.lng), r: 5 })) ?? [];
+    if (cityIncrease?.length > 0) {
+      cityIncrease.sort((a, b) => {
+        if (a?.eco > b?.eco) return -1;
+        if (a?.eco < b?.eco) return 1;
+        return 0;
+      });
+    }
     setCharts({
       ...charts,
       byStateDecrease: stateDecrease,
@@ -97,6 +144,7 @@ export default function Tracker() {
   }
 
   const handleFetchCoordinatesPaginated = async () => {
+    if (isExpired) return;
     const response = await getCoordinatesPaginated({ token: userData?.token?.data?.jwt, limit, page, query });
     if (!response?.data && !response?.data?.coordinates && !Array.isArray(response?.data?.coordinates) && isLoadingPaginated) {
       notify("No se pudieron obtener las coordenadas seleccionadas");
@@ -137,17 +185,42 @@ export default function Tracker() {
     <Page
       title="TRACKER"
       fullWidth
-      titleMetadata={<Badge tone={userData?.user?.is_logged ? "success" : "critical"}>{userData?.user?.is_logged ? "Activo" : "Inactivo"}</Badge>}
+      titleMetadata={<Badge tone={!isExpired ? "success" : "critical"}>{!isExpired ? "Activo" : "Inactivo"}</Badge>}
       subtitle={<><b>Usuario:</b>{" "}{userData?.user?.name}</>}
-      primaryAction={{ content: "Reporte", icon: (<IconPdf />), onAction: () => { } }}
+      primaryAction={{ content: "Reporte", icon: (<IconPdf />), onAction: () => { }, disabled: !IS_ADMIN() }}
       secondaryActions={[
         {
           content: 'Cambiar contraseña',
           onAction: () => setShowChangePasswordModal(true),
         },
+        {
+          content: 'Cerrar sesión',
+          onAction: () => {
+            localStorage.removeItem('userData');
+            navigate("/");
+          },
+          destructive: true
+        },
+        {
+          content: 'Usuarios',
+          onAction: () => {
+            setShowUsersModal(true);
+          },
+          icon: (<IconUsers />),
+          disabled: !IS_ADMIN(),
+        },
       ]}
     >
       <ToastContainer />
+      {
+        isExpired && (
+          <div className="mb-4">
+            <LegacyCard sectioned>
+              <InlineError message="Debes cerrar sesión. El token ha expirado" />
+            </LegacyCard>
+          </div>
+        )
+      }
       <div className="grid grid-cols-2 grid-rows-2 gap-5 pb-5">
         <div className="border rounded-md border-gray-300">
           <Page
@@ -158,7 +231,7 @@ export default function Tracker() {
                 icon={<IconTable />}
                 variant="primary"
                 onClick={handleDownloadCoordinates}
-                disabled={rows?.length === 0 || isLoadingPaginated}
+                disabled={rows?.length === 0 || isLoadingPaginated || !IS_ADMIN()}
               >
                 Excel
               </Button>
@@ -207,12 +280,15 @@ export default function Tracker() {
             fullWidth
           >
             <LegacyCard sectioned>
-              <Button onClick={() => navigate(`/map/${limit}/${page}/${!query || query === "" ? "empty" : query}`)}>Ver mapa</Button>
+              <Button disabled={rows?.length === 0 || isLoadingPaginated} onClick={() => navigate(`/map/${limit}/${page}/${!query || query === "" ? "empty" : query}`)}>Ver mapa</Button>
               <FooterHelp>
                 La librería que utilicé para el mapa, <b>Leaflet</b>, tenía un error de renderizado en contenedores pequeños (necesitaba un <b>vh de 100</b>), por ende lo moví a otra página para que la vista estuviera bien.{' '}
                 <Link url="https://github.com/PaulLeCam/react-leaflet/issues/1052" target="_blank">
                   Lo solucioné así.
                 </Link>
+                <br />
+                <br />
+                Aún así es funcional el mapa y las coordenadas buscadas en la <b>tabla ←</b> son las que serán mostradas en el mapa.
               </FooterHelp>
             </LegacyCard>
           </Page>
@@ -220,19 +296,35 @@ export default function Tracker() {
         <div className="border rounded-md border-gray-300">
           <Page
             title="Gráfico por estado"
-            subtitle="Ordenados por nombre de menor a mayor, y por latitud y logitud."
+            subtitle={<div><b>Ordenados por nombre de menor a mayor</b>, y por latitud y logitud.</div>}
             fullWidth
           >
-            <BubbleChart chart={charts?.byStateDecrease} label="Por Estado" sort="state" />
+            {
+              IS_ADMIN() ? (
+                <BubbleChart chart={charts?.byStateDecrease} label="Por Estado" sort="state" />
+              ) : (
+                <LegacyCard title="Acceso denegado" sectioned>
+                  <p>No tienes permisos para ver la gráfica.</p>
+                </LegacyCard>
+              )
+            }
           </Page>
         </div>
         <div className="border rounded-md border-gray-300">
           <Page
             title="Gráfico por ciudad"
-            subtitle="Ordenados por nombre de mayor a menor, y por latitud y logitud."
+            subtitle={<div><b>Ordenados por nombre de mayor a menor</b>, y por latitud y logitud.</div>}
             fullWidth
           >
-            <BubbleChart chart={charts?.byCityIncrease} label="Por Ciudad" sort="country" />
+            {
+              IS_ADMIN() ? (
+                <BubbleChart chart={charts?.byCityIncrease} label="Por Ciudad" sort="country" />
+              ) : (
+                <LegacyCard title="Acceso denegado" sectioned>
+                  <p>No tienes permisos para ver la gráfica.</p>
+                </LegacyCard>
+              )
+            }
           </Page>
         </div>
       </div>
@@ -244,6 +336,17 @@ export default function Tracker() {
               setShowChangePasswordModal(false);
             }}
             userData={userData}
+          />
+        )
+      }
+      {
+        showUsersModal && (
+          <UsersModal
+            open={showUsersModal}
+            onClose={() => {
+              setShowUsersModal(false);
+            }}
+            loggedUser={userData?.user ?? null}
           />
         )
       }

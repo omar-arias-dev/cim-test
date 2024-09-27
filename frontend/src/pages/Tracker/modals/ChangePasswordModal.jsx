@@ -1,14 +1,40 @@
-import { Divider, FormLayout, Modal, TextContainer, TextField } from "@shopify/polaris";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Divider, FormLayout, Modal, TextContainer, TextField } from "@shopify/polaris";
+import { useChangePasswordMutation } from "../../../stores/AuthStore";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
+const notify = (message) => toast(message);
 
 export default function ChangePasswordModal({ open, onClose, userData }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     currentPassword: "",
     newPassword: "",
   });
   const handleClose = () => {
+    if (isLoading) return;
     onClose();
+  }
+
+  const [changePassword, { isLoading }] = useChangePasswordMutation();
+
+  const handleChangePassword = async () => {
+    const response = await changePassword({ email: userData?.user?.email, current_password: form.currentPassword, new_password: form.newPassword });
+    if (response?.data?.code !== 200) {
+      if (response?.error?.data?.code === 404) {
+        notify("No se encontró el usuario. Recargar");
+      } else if (response?.error?.data?.code === 401) {
+        notify("La contraseña actual es incorrecta");
+      }
+      return;
+    }
+    notify("Se cambió la contraseña correctamente");
+    setTimeout(() => {
+      localStorage.removeItem('userData');
+      navigate("/");
+    }, "1500");
   }
 
   return (
@@ -18,20 +44,23 @@ export default function ChangePasswordModal({ open, onClose, userData }) {
       title="Cambiar contraseña"
       primaryAction={{
         content: 'Cambiar',
-        onAction: handleClose,
+        onAction: handleChangePassword,
         destructive: true,
         disabled: (
           !form.currentPassword ||
-          !form.newPassword
+          !form.newPassword ||
+          isLoading
         )
       }}
       secondaryActions={[
         {
           content: 'Cancelar',
           onAction: handleClose,
+          disabled: isLoading,
         },
       ]}
     >
+      <ToastContainer />
       <Modal.Section>
         <TextContainer>
           <p>
