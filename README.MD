@@ -1,6 +1,6 @@
 # CIM-TEST
 
-# Proyecto Fullstack con Docker, PHP, Node y Base de Datos
+# Proyecto Fullstack con Docker, PHP, React y Base de Datos
 
 Este proyecto incluye un backend en PHP (Laravel) y un frontend en React, junto con una base de datos administrada mediante Docker. Se requiere un gestor de base de datos (pgAdmin o DBeaver) para la visualización y administración de los datos.
 
