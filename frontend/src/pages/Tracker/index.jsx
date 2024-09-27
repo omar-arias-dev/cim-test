@@ -83,11 +83,14 @@ export default function Tracker() {
     const x = dayjs(EXP_DATE).diff(dayjs());
     const y = dayjs(EXP_DATE).add(10, "minute");
     const z = dayjs(y).diff(dayjs());
-    if (!x || isNaN(x) || x < 0) {
+    if (!x || isNaN(x)) {
+      return;
+    };
+    if (x < 0) {
       localStorage.removeItem('userData');
       navigate("/");
       return;
-    };
+    }
     const timerx = setTimeout(() => {
       notify("El token ha expirado. Se cerrará sesión en 10 minutos");
       setIsExpired(true);

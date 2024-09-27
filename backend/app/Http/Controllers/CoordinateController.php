@@ -60,7 +60,8 @@ class CoordinateController extends Controller
         if ($query) {
             $array = array_filter($array, function ($item) use ($query) {
                 return stripos($item['country'], $query) !== false ||
-                    stripos($item['state'], $query) !== false;
+                    stripos($item['state'], $query) !== false ||
+                    stripos($item['eco'], $query) !== false;
             });
         }
         $offset = ($page - 1) * $limit;
