@@ -9,6 +9,7 @@ import BubbleChart from "./components/BubbleChart";
 import ChangePasswordModal from "./modals/ChangePasswordModal";
 import dayjs from "dayjs";
 import UsersModal from "./modals/UsersModal";
+import { BuildReport } from "./components/ReportBuilder";
 
 function IconTable(props) {
   return (
@@ -187,7 +188,7 @@ export default function Tracker() {
       fullWidth
       titleMetadata={<Badge tone={!isExpired ? "success" : "critical"}>{!isExpired ? "Activo" : "Inactivo"}</Badge>}
       subtitle={<><b>Usuario:</b>{" "}{userData?.user?.name}</>}
-      primaryAction={{ content: "Reporte", icon: (<IconPdf />), onAction: () => { }, disabled: !IS_ADMIN() }}
+      primaryAction={{ content: "Reporte", icon: (<IconPdf />), onAction: () => {BuildReport(rows)}, disabled: !IS_ADMIN() }}
       secondaryActions={[
         {
           content: 'Cambiar contraseña',
@@ -216,7 +217,7 @@ export default function Tracker() {
         isExpired && (
           <div className="mb-4">
             <LegacyCard sectioned>
-              <InlineError message="Debes cerrar sesión. El token ha expirado" />
+              <InlineError message="Debes cerrar sesión. El token ha expirado." />
             </LegacyCard>
           </div>
         )
